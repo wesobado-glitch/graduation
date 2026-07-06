@@ -171,6 +171,8 @@ class _LazyEmbeddings:
         if self._impl is None:
             with self._lock:
                 if self._impl is None:
+                    import torch
+                    torch.set_num_threads(1)
                     self._impl = HuggingFaceEmbeddings(
                         model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
                         model_kwargs={"device": "cpu"},
