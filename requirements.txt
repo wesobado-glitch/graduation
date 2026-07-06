@@ -1,0 +1,43 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+# DEEB Analytics Bot
+
+gradio>=4.0.0
+langchain>=0.2.0
+langchain-core>=0.2.0
+langchain-community>=0.2.0
+langchain-groq>=0.1.0
+langchain-huggingface>=0.0.3
+faiss-cpu>=1.8.0
+pandas>=2.0.0
+plotly>=5.20.0
+openpyxl>=3.1.0
+arabic-reshaper>=3.0.0
+python-bidi>=0.4.2
+python-dotenv>=1.0.0
+sentence-transformers>=3.0.0
+tabulate>=0.9.0
+# Optional — for chart PNG embed in PDF:
+kaleido>=0.2.1
+# Optional — for PDF reports:
+reportlab>=4.0.0
+psycopg2-binary>=2.9.0
+
+# Install CPU-only PyTorch from the PyTorch index
+
+# ── PyTorch (CPU) ──────────────────────────────────────────────────────────────
+torch==2.4.1+cpu
+
+numpy==1.26.4
+
+
+pydantic==2.8.2
+
+# Django & Web Server Dependencies
+django>=5.0.0,<6.0
+djangorestframework>=3.15.0
+drf-yasg
+setuptools<82.0.0
+gunicorn>=22.0.0
+whitenoise>=6.0.0
+fastapi>=0.110.0
+uvicorn>=0.30.0
