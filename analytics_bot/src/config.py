@@ -171,12 +171,25 @@ class _LazyEmbeddings:
         if self._impl is None:
             with self._lock:
                 if self._impl is None:
-                    import torch
-                    torch.set_num_threads(1)
-                    self._impl = HuggingFaceEmbeddings(
-                        model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
-                        model_kwargs={"device": "cpu"},
-                    )
+                    hf_token = os.getenv("HF_TOKEN")
+                    if hf_token:
+                        # Use HF Inference API — runs the model on HF servers (zero local RAM).
+                        # Same model = same vectors = FAISS index stays compatible.
+                        from langchain_huggingface import HuggingFaceEndpointEmbeddings
+                        self._impl = HuggingFaceEndpointEmbeddings(
+                            model="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+                            huggingfacehub_api_token=hf_token,
+                        )
+                        print("✅ Embeddings ready (HF Inference API — zero local RAM).")
+                    else:
+                        # Fallback: load model locally (needs ~300MB RAM — fine for local dev)
+                        import torch
+                        torch.set_num_threads(1)
+                        self._impl = HuggingFaceEmbeddings(
+                            model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+                            model_kwargs={"device": "cpu"},
+                        )
+                        print("✅ Embeddings ready (local model).")
 
     def __getattr__(self, name):
         self._load()
