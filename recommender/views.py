@@ -19,19 +19,16 @@ MODEL_PT = "recommender/model.pt"
 CHECKPOINT_JSON = "recommender/checkpoint.json"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+# Lazy-load: only initialize the model on first request, not during migrate/collectstatic
+_state = None
+
+def _get_state():
+    global _state
+    if _state is None:
+        _state = load_checkpoint(model_pt=MODEL_PT, checkpoint_json=CHECKPOINT_JSON)
+    return _state
+
 # POST /recommend item id's to user 
-
-def startup():
-    _state = load_checkpoint(model_pt=MODEL_PT, checkpoint_json=CHECKPOINT_JSON)
-    
-    return {
-        "model": _state["model"],
-        "item2id": _state["item2id"],
-        "id2item": _state["id2item"],
-        "max_len": _state["model"].max_len,
-    }
-
-_state = startup()
 
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
@@ -39,23 +36,19 @@ _state = startup()
 def recommend(request):
     print(request.data)
     try:
+        state = _get_state()
         data = RecommendRequest.model_validate(request.data)
 
         recs = get_recommendations(
             history_item_ids=data.item_ids,
-            model=_state["model"],
-            item2id=_state["item2id"],
-            id2item=_state["id2item"],
-            max_len=_state["max_len"],
+            model=state["model"],
+            item2id=state["item2id"],
+            id2item=state["id2item"],
+            max_len=state["model"].max_len,
             device=DEVICE,
             top_k=data.top_k,
         )
 
-        # if not recs:
-        #     raise HTTPException(
-        #         status_code=404,
-        #         detail="None of the provided item_ids are known to the model.",
-        #     )
         #convert recommendResponse to normal Response
         response = RecommendResponse(user_id=data.user_id, recommendations=[int(r) for r in recs], top_k=data.top_k)
         return Response(response.dict(), status=HTTP_200_OK)
@@ -69,6 +62,7 @@ def recommend(request):
 @permission_classes([IsAuthenticated])
 def recommend_by_customer(request):
     try:
+        state = _get_state()
         data = CustomerRecommendRequest.model_validate(request.data)
         history = get_customer_last_items(data.customer_id, limit=10)
         is_new_customer = not history
@@ -78,10 +72,10 @@ def recommend_by_customer(request):
 
         recs = get_recommendations(
         history_item_ids=history,
-        model=_state["model"],
-        item2id=_state["item2id"],
-        id2item=_state["id2item"],
-        max_len=_state["max_len"],
+        model=state["model"],
+        item2id=state["item2id"],
+        id2item=state["id2item"],
+        max_len=state["model"].max_len,
         device=DEVICE,
         top_k=data.top_k,
     )
