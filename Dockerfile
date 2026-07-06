@@ -30,4 +30,4 @@ RUN python manage.py collectstatic --noinput
 EXPOSE 8000
 
 # Start Django with Gunicorn, automatically running migrations before booting the web server
-CMD ["sh", "-c", "python manage.py migrate && gunicorn recommendation_v1.wsgi:application --bind 0.0.0.0:$PORT"]
+CMD ["sh", "-c", "python manage.py migrate && gunicorn recommendation_v1.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --timeout 120 --preload"]
