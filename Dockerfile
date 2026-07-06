@@ -1,9 +1,17 @@
 FROM python:3.11-slim
 
-# Set environment variables to optimize Python performance and configuration
+# Set environment variables to optimize Python performance and memory usage
+# MALLOC_ARENA_MAX=2: Reduces glibc memory fragmentation (critical for Python+PyTorch in containers)
+# OMP/MKL_NUM_THREADS=1: Limit CPU threads to reduce memory overhead
+# HF_HOME/TRANSFORMERS_CACHE: Cache HuggingFace models in a known location inside the image
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PORT=8000
+    PORT=8000 \
+    MALLOC_ARENA_MAX=2 \
+    OMP_NUM_THREADS=1 \
+    MKL_NUM_THREADS=1 \
+    HF_HOME=/app/.hf_cache \
+    TRANSFORMERS_CACHE=/app/.hf_cache
 
 # Set the working directory
 WORKDIR /app
@@ -19,6 +27,10 @@ COPY requirements.txt /app/
 
 # Install python dependencies without caching to keep the image slim
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Pre-download the HuggingFace embedding model at BUILD time so it's cached in the image.
+# This avoids downloading at runtime, which causes a memory spike (download buffer + model load).
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')"
 
 # Copy the rest of the application code
 COPY . /app/
