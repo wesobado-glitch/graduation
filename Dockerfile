@@ -28,9 +28,6 @@ COPY requirements.txt /app/
 # Install python dependencies without caching to keep the image slim
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Pre-download the HuggingFace embedding model at BUILD time so it's cached in the image.
-# This avoids downloading at runtime, which causes a memory spike (download buffer + model load).
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')"
 
 # Copy the rest of the application code
 COPY . /app/
