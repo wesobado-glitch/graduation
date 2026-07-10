@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
     'recommender',
     'rest_framework',
     'rest_framework.authtoken',
@@ -65,6 +66,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'recommendation_v1.middleware.RequestDebugMiddleware',  # Temporary: remove after debugging
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -156,6 +158,31 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Security settings for production
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# CORS settings
+# Allow all origins in development; restrict in production by setting
+# CORS_ALLOWED_ORIGINS to a list of allowed origins.
+CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'True') == 'True'
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
