@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Analytics Dashboard</title>
+    <!-- Include Plotly CDN to parse and render chart_json natively -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8fafc;
+            color: #334155;
+            margin: 0;
+            padding: 24px;
+        }
+
+        .container {
+            max-width: 950px;
+            margin: 0 auto;
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        h1 {
+            color: #1e293b;
+            font-size: 1.5rem;
+            margin-top: 0;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 12px;
+        }
+
+        .input-group {
+            margin-bottom: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label {
+            font-weight: 600;
+            color: #475569;
+        }
+
+        textarea {
+            width: 100%;
+            height: 80px;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgb(37 99 235 / 0.15);
+        }
+
+        button {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            align-self: flex-start;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background-color: #1d4ed8;
+        }
+
+        button:disabled {
+            background-color: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        .section {
+            margin-top: 24px;
+            padding: 20px;
+            border-radius: 8px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            display: none;
+            /* Hidden by default until data arrives */
+        }
+
+        .section-title {
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #475569;
+            border-left: 4px solid #2563eb;
+            padding-left: 8px;
+            font-size: 1.1rem;
+        }
+
+        .rtl-box {
+            direction: rtl;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            background: #f1f5f9;
+            padding: 14px;
+            border-radius: 6px;
+        }
+
+        #chartContainer {
+            min-height: 400px;
+            width: 100%;
+        }
+
+        .status-message {
+            margin-top: 16px;
+            font-style: italic;
+            color: #64748b;
+        }
+
+        /* Style adjustments for Recommendations & Follow ups */
+        .reco-container {
+            background-color: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #166534;
+        }
+
+        .followup-badge {
+            display: inline-block;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            color: #1d4ed8;
+            padding: 6px 12px;
+            border-radius: 20px;
+            margin: 4px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .followup-badge:hover {
+            background: #dbeafe;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>AI Intelligent Analytics Workspace</h1>
+
+        <!-- User Input Element -->
+        <div class="input-group">
+            <label for="questionInput">Ask a business or sales question:</label>
+            <textarea id="questionInput" placeholder="e.g., What is the most sold 5 products?"></textarea>
+            <button id="submitBtn">Ask Assistant</button>
+        </div>
+
+        <!-- Status Output Box -->
+        <div id="statusMessage" class="status-message"></div>
+
+        <!-- 1. Text Response / Core Answer -->
+        <div id="responseSection" class="section">
+            <div class="section-title">Core Response</div>
+            <div id="textResponse" class="rtl-box"></div>
+        </div>
+
+        <!-- 2. Data Table Structure (result_html) -->
+        <div id="tableSection" class="section">
+            <div class="section-title">Data Sheet Table</div>
+            <div id="tableContainer"></div>
+        </div>
+
+        <!-- 3. Interactive Graphics Rendering Container (chart_json / chart_html) -->
+        <div id="chartSection" class="section">
+            <div class="section-title">Visual Analytics Chart</div>
+            <div id="chartContainer"></div>
+        </div>
+
+        <!-- 4. Strategic System Recommendations (reco_text) -->
+        <div id="recoSection" class="section">
+            <div class="section-title">Strategic Recommendations</div>
+            <div id="recoResponse" class="rtl-box reco-container"></div>
+        </div>
+
+        <!-- 5. Interactive Action Suggestions (followup) -->
+        <div id="followupSection" class="section">
+            <div class="section-title">Suggested Next Questions</div>
+            <div id="followupContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('submitBtn').addEventListener('click', () => executeQuery());
+
+        // Allow pressing Enter to submit if needed (Shift+Enter for new line)
+        document.getElementById('questionInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                executeQuery();
+            }
+        });
+
+        async function executeQuery(presetQuestion = null) {
+            const inputEl = document.getElementById('questionInput');
+
+            // If a followup button chip was clicked, load its text into the input field
+            if (presetQuestion) {
+                inputEl.value = presetQuestion;
+            }
+
+            const questionText = inputEl.value.trim();
+            const submitBtn = document.getElementById('submitBtn');
+            const statusMessage = document.getElementById('statusMessage');
+
+            // UI Layout sections
+            const sections = {
+                response: document.getElementById('responseSection'),
+                table: document.getElementById('tableSection'),
+                chart: document.getElementById('chartSection'),
+                reco: document.getElementById('recoSection'),
+                followup: document.getElementById('followupSection')
+            };
+
+            // Content targets
+            const targets = {
+                response: document.getElementById('textResponse'),
+                table: document.getElementById('tableContainer'),
+                chart: document.getElementById('chartContainer'),
+                reco: document.getElementById('recoResponse'),
+                followup: document.getElementById('followupContainer')
+            };
+
+            if (!questionText) {
+                statusMessage.innerHTML = '<span style="color: #dc2626;">Please enter a query or choose a suggestion.</span>';
+                return;
+            }
+
+            // Initialize UI Feedback states
+            submitBtn.disabled = true;
+            statusMessage.innerHTML = 'Querying backend pipelines... Processing visuals...';
+
+            // Clear display visibility
+            Object.values(sections).forEach(sec => sec.style.display = 'none');
+
+            // Clear residual scripts from previous charts
+            document.querySelectorAll('.injected-plotly-script').forEach(el => el.remove());
+
+            try {
+                const response = await fetch("/analytics/", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ 'question': questionText })
+                });
+
+                if (!response.ok) throw new Error(`HTTP System Error Code: ${response.status}`);
+
+                const data = await response.json();
+                statusMessage.innerHTML = ''; // Clear processing logs
+
+                // --- 1. POPULATE MAIN RESPONSE ---
+                if (data.response) {
+                    targets.response.textContent = data.response;
+                    sections.response.style.display = 'block';
+                }
+
+                // --- 2. POPULATE RESULT HTML TABLE ---
+                if (data.result_html && data.result_html.trim() !== '') {
+                    targets.table.innerHTML = data.result_html;
+                    sections.table.style.display = 'block';
+                }
+
+                // --- 3. POPULATE GRAPHICS ENGINE (Handles both chart_json and chart_html formats) ---
+                // Purge any previous Plotly chart in the container
+                Plotly.purge(targets.chart);
+                targets.chart.innerHTML = '';
+
+                if (data.chart_json) {
+                    sections.chart.style.display = 'block';
+
+                    // Parse JSON structure if delivered as raw text string format
+                    const traceData = typeof data.chart_json === 'string' ? JSON.parse(data.chart_json) : data.chart_json;
+
+                    // Render using full Plotly spec (data + layout + frames) with responsive config
+                    Plotly.newPlot(
+                        targets.chart,
+                        traceData.data || traceData,
+                        traceData.layout || {},
+                        { responsive: true, displayModeBar: true }
+                    );
+                }
+                else if (data.chart_html && data.chart_html.trim() !== '') {
+                    sections.chart.style.display = 'block';
+
+                    // Extract the Plotly div + inline script from chart_html and render it.
+                    // The chart_html from fig.to_html(full_html=False) contains a div + a
+                    // Plotly.newPlot(...) script. We extract the trace/layout from that script
+                    // and render using our own Plotly CDN to avoid double-loading plotly.js.
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(data.chart_html, 'text/html');
+
+                    // Try to find the Plotly.newPlot call in the inline scripts and extract args
+                    let rendered = false;
+                    doc.querySelectorAll('script').forEach(s => {
+                        if (rendered) return;
+                        const text = s.textContent || '';
+                        // Plotly's to_html produces: Plotly.newPlot("divId", [...], {...}, {...})
+                        const match = text.match(/Plotly\.newPlot\(\s*["'][^"']+["']\s*,\s*(\[[\s\S]*\])\s*,\s*(\{[\s\S]*\})\s*(?:,\s*(\{[\s\S]*?\}))?\s*\)/);
+                        if (match) {
+                            try {
+                                const traces = JSON.parse(match[1]);
+                                const layout = JSON.parse(match[2]);
+                                Plotly.newPlot(targets.chart, traces, layout, { responsive: true, displayModeBar: true });
+                                rendered = true;
+                            } catch(e) {
+                                console.warn('Could not parse Plotly args from chart_html, falling back to injection:', e);
+                            }
+                        }
+                    });
+
+                    // Fallback: inject the raw HTML nodes + execute scripts (legacy path)
+                    if (!rendered) {
+                        Array.from(doc.body.childNodes).forEach(node => targets.chart.appendChild(node));
+                        doc.querySelectorAll('script').forEach(oldScript => {
+                            const newScript = document.createElement('script');
+                            newScript.classList.add('injected-plotly-script');
+                            if (oldScript.src) newScript.src = oldScript.src;
+                            else newScript.textContent = oldScript.textContent;
+                            document.body.appendChild(newScript);
+                        });
+                    }
+                }
+
+                // --- 4. POPULATE STRATEGIC RECOMMENDATIONS (reco_text) ---
+                if (data.reco_text) {
+                    targets.reco.textContent = data.reco_text;
+                    sections.reco.style.display = 'block';
+                }
+
+                // --- 5. POPULATE INTERACTIVE CHIPS (followup) ---
+                if (data.followup) {
+                    targets.followup.innerHTML = ''; // Clear old buttons
+
+                    // Normalize data formats if response handles stringified arrays or clean string arrays
+                    const suggestions = typeof data.followup === 'string' ? JSON.parse(data.followup) : data.followup;
+
+                    if (Array.isArray(suggestions) && suggestions.length > 0) {
+                        suggestions.forEach(item => {
+                            const chip = document.createElement('div');
+                            chip.className = 'followup-badge';
+                            chip.textContent = item;
+                            // Clicking a chip automatically runs the chosen recommendation query directly
+                            chip.onclick = () => executeQuery(item);
+                            targets.followup.appendChild(chip);
+                        });
+                        sections.followup.style.display = 'block';
+                    }
+                }
+
+            } catch (error) {
+                console.error("Dashboard Render Pipeline Crash:", error);
+                statusMessage.innerHTML = `<span style="color: #dc2626; font-weight: bold;">Pipeline Error: ${error.message}</span>`;
+            } finally {
+                submitBtn.disabled = false;
+            }
+        }
+    </script>
+
+</body>
+
+</html>
